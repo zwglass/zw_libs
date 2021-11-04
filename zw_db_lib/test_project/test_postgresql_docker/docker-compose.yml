@@ -1,0 +1,74 @@
+version: "3.9"
+   
+services:
+    db_postgres:
+        image: postgres
+        volumes:
+            - ./data/db:/var/lib/postgresql/data
+        # 需要更新 environment 必须删除数据库数据(./data/db) ./data/db为空, environment才会写入
+        environment:
+            - POSTGRES_DB=postgres
+            - POSTGRES_USER=zwglass
+            - POSTGRES_PASSWORD=zw123456
+        # networks: 
+        #     - customnet
+    db_postgres_rebate_platform:
+        image: postgres
+        volumes:
+            - ./data/db_rebate_platform:/var/lib/postgresql/data
+        # 需要更新 environment 必须删除数据库数据(./data/db) ./data/db为空, environment才会写入
+        environment:
+            - POSTGRES_DB=postgres
+            - POSTGRES_USER=zwglass
+            - POSTGRES_PASSWORD=zw123456
+    label_print_server:
+        # 标签打印服务器
+        image: zwglass/django_label_print_server:1.0
+        command: python manage.py runserver 0.0.0.0:8005
+        volumes:
+            - /Users/zhaoshenghua/development/programs/study/docker/docker_django_postgres_pgadmin/label_print_server:/label_print_server
+        working_dir: /label_print_server
+        ports:
+            - "8005:8005"
+        depends_on:
+            - db_postgres
+        tty: true
+    server_rebate_platform:
+        # 返利平台服务器
+        image: zwglass/server_rebate_platform:1.0
+        volumes:
+            - /Users/zhaoshenghua/development/programs/rebate_platform/server/server_rebate_platform:/server_rebate_platform
+        ports:
+            - "8006:8006"
+        depends_on:
+            - db_postgres
+        tty: true
+    test_zwdblib_project:
+        image: zwglass/test_zwdblib_postgresql:1.0
+        volumes:
+            - /Users/zhaoshenghua/development/shell_text/db/zw_db_lib:/test_zwdblib_project
+        ports:
+            - "9011:9011"
+        depends_on:
+            - db_postgres
+        tty: true
+    pgadmin:
+    # docker pull dpage/pgadmin4:snapshot; login: user@domain.com; password: SuperSecret;
+        image: dpage/pgadmin4:snapshot
+        restart: always
+        environment:
+            - PGADMIN_DEFAULT_EMAIL=user@domain.com
+            - PGADMIN_DEFAULT_PASSWORD=SuperSecret
+            - PGADMIN_LISTEN_PORT=5050
+        ports:
+            - "5050:5050"
+        tty: true
+        depends_on:
+            - db_postgres
+
+networks:
+    default:
+        external: true
+        name: docker_web
+
+# If you haven't already, create the "docker_web" network: sudo docker network create docker_web
