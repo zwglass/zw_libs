@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import time
 
 self_file_path = str(Path(__file__).resolve())
 project_folder_path = str(Path(self_file_path).parent.parent)
@@ -9,6 +10,7 @@ sys.path.append(project_folder_path)
 # 新增操作
 from _base_funcs.dict_convert_sql import DictConvertSqlText
 from _base_funcs.connect_db import ConnectDb
+from _db_handle.get import DbGet
 
 class DbInsert(object):
     """
@@ -32,6 +34,8 @@ class DbInsert(object):
             if col_name == '':
                 continue
             default_val = col_props.get('default', '')
+            if default_val == 'int(time.time())':
+                default_val = int(time.time())
             default_dict.update({col_name: default_val})
         return default_dict
 
@@ -40,10 +44,10 @@ class DbInsert(object):
         default_dict = self.insert_default_dict(columns)
         default_dict.update(insert_dict)
 
-        insert_dict = self.dict_convert_sql_text_class.dict_convert_insert_str(self.db_type, **default_dict)
-        columns = insert_dict['columns']
-        placeholders = insert_dict['placeholders']
-        values_tuple = insert_dict['values_tuple']
+        convert_insert_dict = self.dict_convert_sql_text_class.dict_convert_insert_str(self.db_type, **default_dict)
+        columns = convert_insert_dict['columns']
+        placeholders = convert_insert_dict['placeholders']
+        values_tuple = convert_insert_dict['values_tuple']
         sql = f"insert into {table_name} ({columns}) values ({placeholders})"
         # print(sql, values_tuple)
         conn = self.connect_db_class.connect_db(self.db_type, **self.connect_args)
@@ -56,3 +60,12 @@ class DbInsert(object):
         conn.commit()
         # 关闭数据库连接
         conn.close()
+        return self.query_inserted_data(table_name, **insert_dict)
+
+    def query_inserted_data(self, table_name, **insert_dict):
+        # 查询新增数据
+        # print(F"File \"{self_file_path}\", line {sys._getframe().f_lineno}, ", insert_dict)
+        db_get_class = DbGet(self.db_type, **self.connect_args)
+        result = db_get_class.query(table_name, 0, 20, True, **insert_dict)
+        # print(result)
+        return result['results'][0]

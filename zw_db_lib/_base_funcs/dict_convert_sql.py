@@ -13,6 +13,9 @@ ret=models.Person.objects.filter(id__lt =4)  # id<4的结果
 # __in: 列表中包含的内容;
 ret=models.Person.objects.filter(id__in =[1,3])  # id 为1,3 的结果
 
+# __not_in: 不在列表中的内容;
+ret=models.Person.objects.filter(id__not_in=[1,3])  # id 为1,3 的结果
+
 # __range: 之间的值
 ret=models.Person.objects.filter(id__range=[1,3])  # 1=< id <=3 的结果; 相当于filter(id__gt =1, id__lt=3)
 
@@ -46,39 +49,49 @@ class DictConvertSqlText(object):
         sign_results_gt_lt = { 'gt': '>', 'gte': '>=', 'lt': '<', 'lte': '<=', 'ne': '<>' }
 
         sign_results_in = { 'in': 'LIKE' }
-        sign_results_range = { 'range': 'BETWEEN' }
-        sign_results_contains = { 'contains': 'LIKE' }      # 包含
-        sign_results_start_with = { 'startwith': 'LIKE' }
-        sign_results_end_with = { 'endwith': 'LIKE' }
+        sign_results_not_in = { 'not_in': 'not like' }
+        sign_results_range = { 'range': 'between' }
+        sign_results_contains = { 'contains': 'like' }      # 包含
+        sign_results_start_with = { 'startwith': 'like' }
+        sign_results_end_with = { 'endwith': 'like' }
 
         key_list = key_val.split('__', 1)
         # val_val = f"\'{val_val}\'"
-        sql_string = f"{key_list[0]} = {placeholder_str}"
+        sql_string = f"\"{key_list[0]}\" = {placeholder_str}"
         values_list = [ copy.deepcopy(val_val), ]
         if len(key_list) == 2:
             if key_list[1] in sign_results_gt_lt.keys():        # 大于小于 符号
                 current_sign = sign_results_gt_lt[key_list[1]]
-                sql_string = f"{key_list[0]} {current_sign} {placeholder_str}"
+                sql_string = f"\"{key_list[0]}\" {current_sign} {placeholder_str}"
             if key_list[1] in sign_results_in.keys() and len(val_val) > 0:      # 包含 符号
                 sql_string = ''
                 values_list = []
                 for current_val in val_val:
                     values_list.extend([current_val, ])
                     if len(sql_string) > 1:
-                        sql_string = f"{sql_string} or {key_list[0]} like {placeholder_str}"
+                        sql_string = f"{sql_string} or \"{key_list[0]}\" like {placeholder_str}"
                     else:
-                        sql_string = f"{key_list[0]} like {placeholder_str}"
+                        sql_string = f"\"{key_list[0]}\" like {placeholder_str}"
+            if key_list[1] in sign_results_not_in.keys() and len(val_val) > 0:      # 不包含 符号
+                sql_string = ''
+                values_list = []
+                for current_val in val_val:
+                    values_list.extend([current_val, ])
+                    if len(sql_string) > 1:
+                        sql_string = f"{sql_string} and \"{key_list[0]}\" not like {placeholder_str}"
+                    else:
+                        sql_string = f"\"{key_list[0]}\" not like {placeholder_str}"
             if key_list[1] in sign_results_range.keys() and len(val_val) == 2:
-                sql_string = f"{key_list[0]} between {placeholder_str} and {placeholder_str}"
+                sql_string = f"\"{key_list[0]}\" between {placeholder_str} and {placeholder_str}"
                 values_list = [ val_val[0], val_val[1], ]
             if key_list[1] in sign_results_contains.keys():
-                sql_string = f"{key_list[0]} like {placeholder_str}"
+                sql_string = f"\"{key_list[0]}\" like {placeholder_str}"
                 values_list = [ f"%{val_val}%", ]
             if key_list[1] in sign_results_start_with.keys():
-                sql_string = f"{key_list[0]} like {placeholder_str}"
+                sql_string = f"\"{key_list[0]}\" like {placeholder_str}"
                 values_list = [ f"{val_val}%", ]
             if key_list[1] in sign_results_end_with.keys():
-                sql_string = f"{key_list[0]} like {placeholder_str}"
+                sql_string = f"\"{key_list[0]}\" like {placeholder_str}"
                 values_list = [ f"%{val_val}", ]
 
         return { 'sql_str': sql_string, 'values_list': values_list }
@@ -89,7 +102,7 @@ class DictConvertSqlText(object):
         for k in kwargs.keys():
             current_sql = self.key_convert_sql_result(k, kwargs[k])
             if all_sql > 1:
-                all_sql = f"{all_sql} AND {current_sql}"
+                all_sql = f"{all_sql} and {current_sql}"
             else:
                 all_sql = current_sql
         return all_sql
@@ -110,7 +123,7 @@ class DictConvertSqlText(object):
                     continue
 
                 if len(where_string) > 1:
-                    where_string = f"{where_string} AND ({current_sql})"
+                    where_string = f"{where_string} and ({current_sql})"
                 else:
                     where_string = f"({current_sql})"
         return { 'where_str': where_string, 'values_tuple': tuple(query_values_list) }

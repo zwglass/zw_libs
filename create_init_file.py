@@ -32,7 +32,7 @@ class CreateInitFile(object):
         # 创建初始化文件 ~~~~~~~ 忽略的文件未添加 ignore_files ~~~~~~~
         # folders = self.traversal_folders_files_class.dir_names_in_folder(project_folder_path, *ignore_folders)
         files_paths = self.traversal_folders_files_class.file_paths_in_folder(str(self_file_path.parent), *self.ignore_folders)
-        print(files_paths)
+        # print(files_paths)
         split_text = copy.deepcopy(project_folder_path)
         line_list = []
         for f_path in files_paths:

@@ -25,7 +25,7 @@ class DbGet(object):
         self.db_type = db_type
         self.connect_args = connect_args
 
-    def query(self, table_name, pagination = 0, data_lines_number = 10, desc = False, order_by_columns = ['id', ], **query_factor):
+    def query(self, table_name, pagination = 0, data_lines_number = 20, desc = False, order_by_columns = ['id', ], **query_factor):
         # 查询操作 
         # pagination: 0-查询所有数据, >0-分页查询;
         # data_lines_number: 每页数据数量
@@ -33,10 +33,22 @@ class DbGet(object):
         # order_by_columns: 排序的列 默认 id 排序
         # query_factor: 查寻条件
         conn = self.connect_db_class.connect_db(self.db_type, **self.connect_args)
+        cur = conn.cursor()
+
         query_dict = self.dict_convert_sql_text_class.dict_convert_query_where_string(self.db_type, **query_factor)
         where_str = query_dict.get('where_str', '')
         values_tuple = query_dict.get('values_tuple', tuple())
-        sql = f"select * from {table_name} where {where_str}"
+        sql = f"select * from {table_name}"
+
+        count_sql = f"select count(*) from {table_name}"
+        if len(where_str) > 0:
+            sql += f" where {where_str}"
+            count_sql += f" where {where_str};"
+        # count_sql = f"select count(*) from {table_name} where {where_str};"
+        # print(f"File \"{self_file_path}\", line {sys._getframe().f_lineno},", count_sql, values_tuple)
+        cur.execute(count_sql, values_tuple)
+        count = cur.fetchone()[0]
+
         if where_str == '':
             sql = f"select * from {table_name}"
 
@@ -56,11 +68,11 @@ class DbGet(object):
             sql = f"{sql} limit {data_lines_number} offset {offset_number}"
         sql = sql + ';'
         
-        # print(sql, values_tuple)
-        cur = conn.cursor()
+        # print(f"File \"{self_file_path}\", line {sys._getframe().f_lineno},", sql, values_tuple)
         cur.execute(sql, values_tuple)
         query_list = cur.fetchall()
-        return self.query_results_convert_dicts(table_name, *query_list)
+        results = self.query_results_convert_dicts(table_name, *query_list)
+        return {'count': count, 'results': results}
 
     def query_results_convert_dicts(self, table_name, *queried_list):
         # 查询到tuple convert dict

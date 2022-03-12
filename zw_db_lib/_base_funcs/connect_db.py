@@ -1,5 +1,4 @@
 import sqlite3
-import psycopg2
 import sys
 from pathlib import Path
 
@@ -11,6 +10,7 @@ sys.path.append(project_folder_path)
 from _base_funcs.configs import db_types
 
 # psycopg2 需要先 pip install psycopg2
+# on Mojave macOS, I solved it by running below steps: pip uninstall psycopg2, pip install psycopg2-binary
 # 连接数据库
 
 class ConnectDb(object):
@@ -39,6 +39,7 @@ class ConnectDb(object):
         return conn
 
     def connect_postgresql(self, **connect_args):
+        import psycopg2
         # 连接 postgreSQL; kwargs = {'db_name', 'user_name', 'password', 'host':'127.0.0.1', 'port':'5432'}
         db_name = connect_args.get('db_name', '')
         user_name = connect_args.get('user_name', '')
